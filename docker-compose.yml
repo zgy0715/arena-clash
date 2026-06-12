@@ -16,6 +16,7 @@ services:
       - ./sql/procedures.sql:/docker-entrypoint-initdb.d/02-procedures.sql
       - ./sql/triggers.sql:/docker-entrypoint-initdb.d/03-triggers.sql
       - ./sql/sample_data.sql:/docker-entrypoint-initdb.d/04-sample_data.sql
+      - ./sql/migrations.sql:/docker-entrypoint-initdb.d/05-migrations.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-arena_admin}"]
       interval: 5s

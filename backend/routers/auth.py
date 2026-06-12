@@ -2,9 +2,9 @@
 认证路由：注册、登录
 JWT Token 签发
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,7 @@ from passlib.hash import bcrypt
 
 from config import settings
 from database import get_db
+from limiter import limiter
 
 router = APIRouter()
 
@@ -29,8 +30,9 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/register", summary="用户注册")
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    """注册新用户，初始金币1000，ELO 1500"""
+@limiter.limit("5/minute")
+async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    """注册新用户，初始金币1000，ELO 1500（限流：每分钟最多 5 次）"""
     # 检查重名
     result = await db.execute(
         text("SELECT id FROM player WHERE username = :u"),
@@ -54,19 +56,20 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", summary="用户登录")
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
-    """登录成功返回 JWT Token"""
+@limiter.limit("10/minute")
+async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
+    """登录成功返回 JWT Token（限流：每分钟最多 10 次尝试）"""
     result = await db.execute(
-        text("SELECT id, password_hash, nickname, elo_rating FROM player WHERE username = :u"),
+        text("SELECT id, password_hash, nickname, elo_rating, is_admin FROM player WHERE username = :u"),
         {"u": body.username},
     )
     row = result.fetchone()
     if not row or not bcrypt.verify(body.password, row.password_hash):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
-    # 签发 JWT
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {"sub": str(row.id), "exp": expire}
+    # 签发 JWT（使用 UTC 时区感知时间）
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload = {"sub": str(row.id), "is_admin": row.is_admin, "exp": expire}
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
     # 更新登录时间
@@ -83,5 +86,6 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
             "id": row.id,
             "nickname": row.nickname,
             "elo_rating": row.elo_rating,
+            "is_admin": row.is_admin,
         },
     }

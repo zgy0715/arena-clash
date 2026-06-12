@@ -57,3 +57,53 @@ CREATE TRIGGER trg_auto_match_code
     BEFORE INSERT ON match_record
     FOR EACH ROW
     EXECUTE FUNCTION fn_trigger_auto_match_code();
+
+
+-- ============================================
+-- 触发器3：玩家删除审计（AFTER DELETE ON player）—— 新增
+-- 功能：任何方式删除玩家都写入审计日志，保证可追溯（此前无 DELETE 触发器）
+-- ============================================
+CREATE OR REPLACE FUNCTION fn_trigger_audit_player_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO audit_log(action, detail)
+    VALUES ('player_deleted_trigger', jsonb_build_object(
+        'id', OLD.id,
+        'username', OLD.username,
+        'nickname', OLD.nickname,
+        'elo_rating', OLD.elo_rating
+    ));
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_audit_player_delete ON player;
+CREATE TRIGGER trg_audit_player_delete
+    AFTER DELETE ON player
+    FOR EACH ROW
+    EXECUTE FUNCTION fn_trigger_audit_player_delete();
+
+
+-- ============================================
+-- 触发器4：好友数维护（AFTER INSERT OR DELETE ON friendship）—— 新增
+-- 功能：插入/删除好友关系时同步维护 player.friend_count 反范式计数
+-- ============================================
+CREATE OR REPLACE FUNCTION fn_trigger_friend_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE player SET friend_count = friend_count + 1 WHERE id = NEW.player_id;
+        RETURN NEW;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE player SET friend_count = GREATEST(0, friend_count - 1) WHERE id = OLD.player_id;
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_friendship_count ON friendship;
+CREATE TRIGGER trg_friendship_count
+    AFTER INSERT OR DELETE ON friendship
+    FOR EACH ROW
+    EXECUTE FUNCTION fn_trigger_friend_count();

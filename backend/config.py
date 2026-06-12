@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change_me"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # CORS（生产环境设置具体源）
+    CORS_ORIGIN: str = "http://localhost:3000"
+
     # 应用
     APP_ENV: str = "development"
     LOG_LEVEL: str = "INFO"
@@ -23,6 +26,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = "../.env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 settings = Settings()

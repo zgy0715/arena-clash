@@ -338,3 +338,167 @@ BEGIN
     RETURN v_code;
 END;
 $$ LANGUAGE plpgsql;
+
+
+-- ============================================
+-- 存储过程5：级联删除玩家（管理后台核心）—— 新增
+-- 功能：管理员删除玩家，外键 ON DELETE CASCADE 自动级联清理
+--       match_detail / player_season_rank / purchase_record / friendship / friend_request，
+--       audit_log.player_id 置空；删除前写审计、删除后刷新物化视图
+-- 特性：行级锁 FOR UPDATE、管理员保护、级联演示、JSONB 审计
+-- ============================================
+CREATE OR REPLACE FUNCTION fn_delete_player_cascade(
+    p_admin_id  INT,
+    p_target_id INT
+) RETURNS TABLE(success BOOLEAN, message TEXT) AS $$
+DECLARE
+    v_target        player%ROWTYPE;
+    v_detail_cnt    INT;
+    v_rank_cnt      INT;
+    v_purchase_cnt  INT;
+BEGIN
+    SELECT * INTO v_target FROM player WHERE id = p_target_id FOR UPDATE;
+    IF v_target IS NULL THEN
+        RETURN QUERY SELECT FALSE, '玩家不存在'::TEXT;
+        RETURN;
+    END IF;
+    IF v_target.is_admin THEN
+        RETURN QUERY SELECT FALSE, '不能删除管理员账号'::TEXT;
+        RETURN;
+    END IF;
+
+    -- 删除前快照各依赖表行数（用于展示级联效果）
+    SELECT COUNT(*) INTO v_detail_cnt   FROM match_detail       WHERE player_id = p_target_id;
+    SELECT COUNT(*) INTO v_rank_cnt     FROM player_season_rank WHERE player_id = p_target_id;
+    SELECT COUNT(*) INTO v_purchase_cnt FROM purchase_record    WHERE player_id = p_target_id;
+
+    -- 审计（删除前写，记录操作者；之后 audit_log.player_id=操作者不受影响）
+    INSERT INTO audit_log(player_id, action, detail)
+    VALUES (p_admin_id, 'player_delete_cascade', jsonb_build_object(
+        'admin_id', p_admin_id,
+        'target_id', p_target_id,
+        'target_nickname', v_target.nickname,
+        'cascade_match_detail', v_detail_cnt,
+        'cascade_season_rank', v_rank_cnt,
+        'cascade_purchase', v_purchase_cnt
+    ));
+
+    -- 级联删除（外键 ON DELETE CASCADE 自动清理子表）
+    DELETE FROM player WHERE id = p_target_id;
+
+    -- 刷新物化视图（CONCURRENTLY 模式，不阻塞读取）
+    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_season_statistics;
+
+    RETURN QUERY SELECT TRUE,
+        FORMAT('已删除玩家「%s」，级联清理 对战详情%s条 / 赛季段位%s条 / 购买记录%s条',
+               v_target.nickname, v_detail_cnt, v_rank_cnt, v_purchase_cnt)::TEXT;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ============================================
+-- 存储过程6：接受好友请求（社交模块）—— 新增
+-- 功能：校验请求 → 置为 accepted → 双向插入两条 friendship → 审计
+-- 特性：FOR UPDATE 行级锁、事务内多语句、双向关系
+-- ============================================
+CREATE OR REPLACE FUNCTION fn_accept_friend_request(
+    p_request_id INT
+) RETURNS TABLE(success BOOLEAN, message TEXT) AS $$
+DECLARE
+    v_req friend_request%ROWTYPE;
+BEGIN
+    SELECT * INTO v_req FROM friend_request WHERE id = p_request_id FOR UPDATE;
+    IF v_req IS NULL THEN
+        RETURN QUERY SELECT FALSE, '好友请求不存在'::TEXT;
+        RETURN;
+    END IF;
+    IF v_req.status <> 'pending' THEN
+        RETURN QUERY SELECT FALSE, '该请求已处理过'::TEXT;
+        RETURN;
+    END IF;
+
+    UPDATE friend_request
+    SET status = 'accepted', responded_at = NOW()
+    WHERE id = p_request_id;
+
+    -- 双向插入（各一行），已存在则跳过；好友计数由触发器维护
+    INSERT INTO friendship(player_id, friend_id)
+    VALUES (v_req.requester_id, v_req.addressee_id),
+           (v_req.addressee_id, v_req.requester_id)
+    ON CONFLICT (player_id, friend_id) DO NOTHING;
+
+    INSERT INTO audit_log(player_id, action, detail)
+    VALUES (v_req.addressee_id, 'friend_accept', jsonb_build_object(
+        'request_id', p_request_id,
+        'requester_id', v_req.requester_id,
+        'addressee_id', v_req.addressee_id
+    ));
+
+    RETURN QUERY SELECT TRUE, '已添加为好友'::TEXT;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ============================================
+-- 存储过程7：一次性创建满员对战（对战中心）—— 新增
+-- 功能：插入对战（触发器自动补编号）→ 遍历 JSONB 数组插入参战玩家
+-- 特性：JSONB 数组驱动、事务内批量插入
+-- 入参示例 p_players: '[{"player_id":1,"hero_id":3,"team_side":1}, ...]'
+-- ============================================
+CREATE OR REPLACE FUNCTION fn_create_match_with_players(
+    p_season_id INT,
+    p_map       TEXT,
+    p_mode      TEXT,
+    p_players   JSONB
+) RETURNS TABLE(out_match_id INT, out_match_code VARCHAR) AS $$
+DECLARE
+    v_match_id   INT;
+    v_match_code VARCHAR(20);
+    v_p          JSONB;
+BEGIN
+    INSERT INTO match_record(season_id, map_name, match_mode, status)
+    VALUES (p_season_id, COALESCE(p_map, '召唤师峡谷'), COALESCE(p_mode, 'ranked'), 'pending')
+    RETURNING id, match_code INTO v_match_id, v_match_code;
+
+    FOR v_p IN SELECT * FROM jsonb_array_elements(p_players)
+    LOOP
+        INSERT INTO match_detail(match_id, player_id, hero_id, team_side)
+        VALUES (
+            v_match_id,
+            (v_p->>'player_id')::INT,
+            (v_p->>'hero_id')::INT,
+            (v_p->>'team_side')::INT
+        );
+    END LOOP;
+
+    RETURN QUERY SELECT v_match_id, v_match_code;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ============================================
+-- 存储过程8：英雄软删除（管理后台）—— 新增
+-- 功能：被对战记录引用的英雄不可硬删（外键 RESTRICT），改为 is_active=FALSE 下架
+--       并解除其与商城商品的关联
+-- ============================================
+CREATE OR REPLACE FUNCTION fn_soft_delete_hero(
+    p_hero_id INT
+) RETURNS TABLE(success BOOLEAN, message TEXT) AS $$
+DECLARE
+    v_name TEXT;
+BEGIN
+    SELECT name INTO v_name FROM hero WHERE id = p_hero_id;
+    IF v_name IS NULL THEN
+        RETURN QUERY SELECT FALSE, '英雄不存在'::TEXT;
+        RETURN;
+    END IF;
+
+    UPDATE hero SET is_active = FALSE WHERE id = p_hero_id;
+    UPDATE shop_item SET hero_id = NULL WHERE hero_id = p_hero_id;
+
+    INSERT INTO audit_log(action, detail)
+    VALUES ('hero_soft_delete', jsonb_build_object('hero_id', p_hero_id, 'name', v_name));
+
+    RETURN QUERY SELECT TRUE, FORMAT('英雄「%s」已下架（软删除）', v_name)::TEXT;
+END;
+$$ LANGUAGE plpgsql;

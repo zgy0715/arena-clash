@@ -62,6 +62,8 @@ CREATE TABLE player (
     losses          INT NOT NULL DEFAULT 0,
     status          VARCHAR(20) DEFAULT 'online'
                     CHECK (status IN ('online', 'offline', 'in_match', 'banned')),
+    is_admin        BOOLEAN NOT NULL DEFAULT FALSE,     -- 管理员标志（管理后台门禁）
+    friend_count    INT NOT NULL DEFAULT 0,             -- 好友数（由触发器 trg_friendship_count 维护）
     last_login      TIMESTAMP,
     created_at      TIMESTAMP DEFAULT NOW(),
     updated_at      TIMESTAMP DEFAULT NOW()
@@ -83,6 +85,7 @@ CREATE TABLE hero (
     price_gold      INT NOT NULL DEFAULT 4500,
     price_rp        INT NOT NULL DEFAULT 0,
     difficulty      INT NOT NULL DEFAULT 1 CHECK (difficulty BETWEEN 1 AND 10),
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,      -- 软删标志：被对战引用的英雄禁止硬删，改为下架
     description     TEXT,
     is_free         BOOLEAN DEFAULT FALSE,
     created_at      TIMESTAMP DEFAULT NOW(),
@@ -124,8 +127,8 @@ CREATE TRIGGER trg_match_updated
 -- ============================================
 CREATE TABLE match_detail (
     id              SERIAL PRIMARY KEY,
-    match_id        INT NOT NULL REFERENCES match_record(id),
-    player_id       INT NOT NULL REFERENCES player(id),
+    match_id        INT NOT NULL REFERENCES match_record(id) ON DELETE CASCADE,
+    player_id       INT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
     hero_id         INT NOT NULL REFERENCES hero(id),
     team_side       INT NOT NULL CHECK (team_side IN (1, 2)),
     kills           INT NOT NULL DEFAULT 0 CHECK (kills >= 0),
@@ -155,7 +158,7 @@ CREATE TABLE match_detail (
 -- ============================================
 CREATE TABLE player_season_rank (
     id              SERIAL PRIMARY KEY,
-    player_id       INT NOT NULL REFERENCES player(id),
+    player_id       INT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
     season_id       INT NOT NULL REFERENCES season(id),
     rank_tier_id    INT NOT NULL REFERENCES rank_tier(id),
     rank_points     INT NOT NULL DEFAULT 0,
@@ -184,7 +187,7 @@ CREATE TABLE shop_item (
     name            VARCHAR(100) NOT NULL,
     item_type       VARCHAR(30) NOT NULL
                     CHECK (item_type IN ('hero','skin','emote','frame')),
-    hero_id         INT REFERENCES hero(id),
+    hero_id         INT REFERENCES hero(id) ON DELETE SET NULL,
     price_gold      INT NOT NULL DEFAULT 0,
     price_rp        INT NOT NULL DEFAULT 0,
     stock           INT NOT NULL DEFAULT -1,
@@ -205,8 +208,8 @@ CREATE TABLE shop_item (
 -- ============================================
 CREATE TABLE purchase_record (
     id              SERIAL PRIMARY KEY,
-    player_id       INT NOT NULL REFERENCES player(id),
-    item_id         INT NOT NULL REFERENCES shop_item(id),
+    player_id       INT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+    item_id         INT NOT NULL REFERENCES shop_item(id) ON DELETE CASCADE,
     currency_type   VARCHAR(10) NOT NULL CHECK (currency_type IN ('gold','rp')),
     price_paid      INT NOT NULL CHECK (price_paid > 0),
     created_at      TIMESTAMP DEFAULT NOW(),
@@ -286,3 +289,54 @@ WHERE mr.status = 'completed'
 GROUP BY mr.season_id, h.id, h.name, h.role;
 
 CREATE UNIQUE INDEX idx_mv_season_hero ON mv_season_statistics (season_id, hero_id);
+
+-- ============================================
+-- 12. 好友请求表 (friend_request) —— 社交模块（新增）
+-- ============================================
+CREATE TABLE friend_request (
+    id              SERIAL PRIMARY KEY,
+    requester_id    INT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+    addressee_id    INT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+    status          VARCHAR(20) NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'accepted', 'rejected')),
+    created_at      TIMESTAMP DEFAULT NOW(),
+    responded_at    TIMESTAMP,
+
+    CHECK (requester_id <> addressee_id),        -- 不能加自己
+    UNIQUE (requester_id, addressee_id)          -- 不能重复申请
+);
+
+-- ============================================
+-- 13. 好友关系表 (friendship) —— 双向各存一行（新增）
+-- ============================================
+CREATE TABLE friendship (
+    id              SERIAL PRIMARY KEY,
+    player_id       INT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+    friend_id       INT NOT NULL REFERENCES player(id) ON DELETE CASCADE,
+    created_at      TIMESTAMP DEFAULT NOW(),
+
+    CHECK (player_id <> friend_id),
+    UNIQUE (player_id, friend_id)
+);
+
+-- 社交索引
+CREATE INDEX idx_friend_request_addressee ON friend_request(addressee_id, status);
+CREATE INDEX idx_friendship_player        ON friendship(player_id);
+
+-- ============================================
+-- audit_log 操作者外键（删玩家保留审计日志、仅置空操作者）—— 级联演示
+-- ============================================
+ALTER TABLE audit_log
+    ADD CONSTRAINT audit_log_player_id_fkey
+    FOREIGN KEY (player_id) REFERENCES player(id) ON DELETE SET NULL;
+
+-- ============================================
+-- 审计操作统计视图（普通视图，实时聚合）—— 审计日志模块
+-- ============================================
+CREATE OR REPLACE VIEW v_audit_action_stats AS
+SELECT action,
+       COUNT(*)                                                        AS cnt,
+       MAX(created_at)                                                 AS last_at,
+       COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')  AS last_7d
+FROM audit_log
+GROUP BY action;

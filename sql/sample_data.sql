@@ -43,35 +43,35 @@ INSERT INTO season(name, start_date, status) VALUES
 -- 4. 玩家数据（50名玩家）
 -- ============================================
 -- 密码统一为 test1234 的 bcrypt 哈希
--- (实际使用 passlib bcrypt 生成)
+-- (使用 passlib + bcrypt 4.0.1 生成，bcrypt>=4.1 不兼容 passlib)
 INSERT INTO player(username, password_hash, nickname, elo_rating, level, experience, gold, total_matches, wins, losses) VALUES
-('player1',  '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '暗夜王者',   2100, 25, 42000, 8500,  150, 95,  55),
-('player2',  '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '烈焰风暴',   1950, 22, 38000, 7200,  130, 78,  52),
-('player3',  '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '铁壁守护',   1800, 20, 35000, 6800,  120, 65,  55),
-('player4',  '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '剑影如风',   1750, 18, 32000, 5500,  110, 60,  50),
-('player5',  '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '星辰之箭',   1680, 17, 30000, 6000,  105, 55,  50),
-('player6',  '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '圣光普照',   1620, 16, 28000, 4800,  100, 52,  48),
-('player7',  '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '月影无踪',   1550, 15, 26000, 5200,  95,  48,  47),
-('player8',  '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '冰霜女王',   1500, 14, 24000, 4500,  90,  45,  45),
-('player9',  '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '狂战之魂',   1450, 13, 22000, 4000,  85,  42,  43),
-('player10', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '迷雾之灵',   1400, 12, 20000, 3800,  80,  40,  40),
+('player1',  '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '暗夜王者',   2100, 25, 42000, 8500,  150, 95,  55),
+('player2',  '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '烈焰风暴',   1950, 22, 38000, 7200,  130, 78,  52),
+('player3',  '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '铁壁守护',   1800, 20, 35000, 6800,  120, 65,  55),
+('player4',  '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '剑影如风',   1750, 18, 32000, 5500,  110, 60,  50),
+('player5',  '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '星辰之箭',   1680, 17, 30000, 6000,  105, 55,  50),
+('player6',  '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '圣光普照',   1620, 16, 28000, 4800,  100, 52,  48),
+('player7',  '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '月影无踪',   1550, 15, 26000, 5200,  95,  48,  47),
+('player8',  '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '冰霜女王',   1500, 14, 24000, 4500,  90,  45,  45),
+('player9',  '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '狂战之魂',   1450, 13, 22000, 4000,  85,  42,  43),
+('player10', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '迷雾之灵',   1400, 12, 20000, 3800,  80,  40,  40),
 
-('player11', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '雷霆一击',   1350, 11, 18000, 3500,  75,  38,  37),
-('player12', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '风暴降临',   1300, 10, 16000, 3200,  70,  35,  35),
-('player13', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '破晓之光',   1250, 9,  14000, 2800,  65,  32,  33),
-('player14', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '暗影之刃',   1200, 8,  12000, 2500,  60,  30,  30),
-('player15', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '烈焰之心',   1150, 7,  10000, 2200,  55,  27,  28),
-('player16', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '钢铁意志',   1100, 6,  8000,  2000,  50,  25,  25),
-('player17', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '疾风闪电',   1050, 5,  6000,  1800,  45,  22,  23),
-('player18', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '星辰大海',   1000, 5,  5000,  1500,  40,  20,  20),
-('player19', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '圣光守护',   950,  4,  4000,  1200,  35,  17,  18),
-('player20', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '月下独行',   900,  3,  3000,  1000,  30,  14,  16),
+('player11', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '雷霆一击',   1350, 11, 18000, 3500,  75,  38,  37),
+('player12', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '风暴降临',   1300, 10, 16000, 3200,  70,  35,  35),
+('player13', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '破晓之光',   1250, 9,  14000, 2800,  65,  32,  33),
+('player14', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '暗影之刃',   1200, 8,  12000, 2500,  60,  30,  30),
+('player15', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '烈焰之心',   1150, 7,  10000, 2200,  55,  27,  28),
+('player16', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '钢铁意志',   1100, 6,  8000,  2000,  50,  25,  25),
+('player17', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '疾风闪电',   1050, 5,  6000,  1800,  45,  22,  23),
+('player18', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '星辰大海',   1000, 5,  5000,  1500,  40,  20,  20),
+('player19', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '圣光守护',   950,  4,  4000,  1200,  35,  17,  18),
+('player20', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '月下独行',   900,  3,  3000,  1000,  30,  14,  16),
 
-('player21', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '冰封之心',   880,  3,  2800,  900,   28,  13,  15),
-('player22', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '狂暴之怒',   860,  3,  2600,  850,   26,  12,  14),
-('player23', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '幽灵漫步',   840,  2,  2400,  800,   24,  11,  13),
-('player24', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '天外飞仙',   820,  2,  2200,  750,   22,  10,  12),
-('player25', '$2b$12$LJ3m4ys3GZfnYMz8kVsKaOmJwBXtGQhPjFWTvCLM5LxKjBvF8oqXy', '战神降临',   800,  2,  2000,  700,   20,  9,   11);
+('player21', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '冰封之心',   880,  3,  2800,  900,   28,  13,  15),
+('player22', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '狂暴之怒',   860,  3,  2600,  850,   26,  12,  14),
+('player23', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '幽灵漫步',   840,  2,  2400,  800,   24,  11,  13),
+('player24', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '天外飞仙',   820,  2,  2200,  750,   22,  10,  12),
+('player25', '$2b$12$khQph93S.msZ49YZCu6x4ODve8ZQcRZGuFaFO7qX45c1dAWvnDtmi', '战神降临',   800,  2,  2000,  700,   20,  9,   11);
 
 -- ============================================
 -- 5. 玩家赛季段位（基于ELO分配）
@@ -167,3 +167,24 @@ INSERT INTO shop_item(name, item_type, hero_id, price_gold, stock, is_limited, d
 ('暗影皮肤', 'skin',   1,    9900, 100, TRUE,  '暗影刺客限定皮肤，限时发售'),
 ('庆祝表情', 'emote',  NULL, 500,  -1,  FALSE, '胜利庆祝专属表情'),
 ('金色边框', 'frame',  NULL, 3000, 50,  TRUE,  '尊贵金色头像边框，限量发售');
+
+-- ============================================
+-- 8. 管理员与社交种子数据（新增）
+-- ============================================
+-- 将 player1 设为管理员（登录框默认 player1 / test1234，开箱即管理员）
+UPDATE player SET is_admin = TRUE WHERE username = 'player1';
+
+-- 预置好友关系（双向各一行）：player1↔player2、player1↔player3
+INSERT INTO friendship(player_id, friend_id) VALUES
+(1, 2), (2, 1),
+(1, 3), (3, 1);
+
+-- 回填好友计数（以 friendship 为准，覆盖触发器累加值，确保确定性）
+UPDATE player SET friend_count = (
+    SELECT COUNT(*) FROM friendship f WHERE f.player_id = player.id
+);
+
+-- 预置待处理好友请求：player4、player5 申请加 player1
+INSERT INTO friend_request(requester_id, addressee_id, status) VALUES
+(4, 1, 'pending'),
+(5, 1, 'pending');

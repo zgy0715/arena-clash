@@ -6,6 +6,7 @@ alembic==1.14.*
 redis[hiredis]==5.2.*
 python-jose[cryptography]==3.3.*
 passlib[bcrypt]==1.7.*
+bcrypt>=3.1,<4.1  # passlib 不兼容 bcrypt>=4.1
 pydantic-settings==2.7.*
 slowapi==0.1.9.*
 structlog==24.4.*

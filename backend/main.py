@@ -16,7 +16,8 @@ from slowapi.util import get_remote_address
 
 from config import settings
 from database import engine
-from routers import auth, players, matchmaking, matches, leaderboard, shop, stats
+from limiter import limiter
+from routers import auth, players, matchmaking, matches, leaderboard, shop, stats, admin, social, seasons, audit
 from routers.websocket import router as ws_router
 
 # ============================================
@@ -31,11 +32,6 @@ structlog.configure(
 )
 logger = structlog.get_logger()
 
-# ============================================
-# 限流器配置（基于 Redis 分布式限流）
-# ============================================
-limiter = Limiter(key_func=get_remote_address, storage_uri=settings.REDIS_URL)
-
 
 # ============================================
 # 应用生命周期
@@ -45,9 +41,16 @@ async def lifespan(app: FastAPI):
     # 启动：初始化 Redis
     global redis_client
     redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+
+    # 安全地显示 Redis 地址（隐藏密码）
+    safe_redis = settings.REDIS_URL
+    if "@" in safe_redis:
+        safe_redis = safe_redis.split("@")[-1]
+    else:
+        safe_redis = safe_redis.replace("redis://", "").replace("rediss://", "")
     logger.info(
         "Arena Clash 服务启动",
-        redis_url=settings.REDIS_URL.split("@")[-1],  # 隐藏密码部分
+        redis_url=safe_redis,
         env=settings.APP_ENV,
     )
     yield
@@ -77,10 +80,10 @@ app.add_exception_handler(
     ),
 )
 
-# CORS 中间件
+# CORS 中间件（生产环境应限制具体域名）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 开发环境允许所有来源
+    allow_origins=["*"] if settings.APP_ENV == "development" else [settings.CORS_ORIGIN],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -104,6 +107,10 @@ app.include_router(matches.router, prefix="/api/matches", tags=["对战"])
 app.include_router(leaderboard.router, prefix="/api/leaderboard", tags=["排行榜"])
 app.include_router(shop.router, prefix="/api/shop", tags=["商城"])
 app.include_router(stats.router, prefix="/api/stats", tags=["数据统计"])
+app.include_router(admin.router, prefix="/api/admin", tags=["管理后台"])
+app.include_router(social.router, prefix="/api/social", tags=["社交"])
+app.include_router(seasons.router, prefix="/api/seasons", tags=["赛季"])
+app.include_router(audit.router, prefix="/api/audit", tags=["审计日志"])
 app.include_router(ws_router, prefix="/ws", tags=["实时通信"])
 
 
