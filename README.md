@@ -3,13 +3,12 @@
   <p><strong>多人在线竞技游戏数据管理平台 · 数据库综合实验</strong></p>
   <br>
   <p>
-    <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=flat&logo=postgresql&logoColor=white">
+    <img src="https://img.shields.io/badge/PostgreSQL-12-336791?style=flat&logo=postgresql&logoColor=white">
     <img src="https://img.shields.io/badge/Redis-7-DC382D?style=flat&logo=redis&logoColor=white">
     <img src="https://img.shields.io/badge/Python-3.13-3776AB?style=flat&logo=python&logoColor=white">
     <img src="https://img.shields.io/badge/FastAPI-0.115-009688?style=flat&logo=fastapi&logoColor=white">
     <img src="https://img.shields.io/badge/Vue-3.5-4FC08D?style=flat&logo=vue.js&logoColor=white">
     <img src="https://img.shields.io/badge/ECharts-5.6-AA344D?style=flat">
-    <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white">
   </p>
 </div>
 
@@ -51,15 +50,15 @@
 ├───────────────────────────────────────────────────────────┤
 │                  数据层 (Data Layer)                        │
 │  ┌─────────────────┐    ┌────────────────────┐            │
-│  │  PostgreSQL 16   │    │    Redis 7          │            │
+│  │  PostgreSQL 12   │    │    Redis 7          │            │
 │  │  持久化主库      │    │  实时排行榜         │            │
 │  │  存储过程/触发器  │    │  匹配队列           │            │
-│  │  复杂查询/统计   │    │  会话管理(TTL)      │            │
-│  │  事务保证        │    │  AOF+密码认证       │            │
+│  │  复杂查询/统计   │    │  限流存储           │            │
+│  │  事务保证        │    │  AOF持久化          │            │
 │  └─────────────────┘    └────────────────────┘            │
 ├───────────────────────────────────────────────────────────┤
 │              部署 (Deployment)                              │
-│           Docker Compose · Nginx 反向代理                   │
+│           本地开发 · 一键启动脚本 (start.bat)                │
 └───────────────────────────────────────────────────────────┘
 ```
 
@@ -74,7 +73,7 @@ Arena Clash 竞技场对决
 ├── 🏟️ 对战系统        创建房间 · 状态同步（触发器） · 结算（存储过程） · MVP 评选
 ├── 🏆 排行榜          Redis 实时排行（< 5ms） · PG 赛季排行 · NTILE 段位分布
 ├── 🛒 虚拟商城        商品列表 · 购买（行级锁 + 存储过程） · 限流防刷
-├── 📊 数据大屏        ECharts 可视化 · 对战趋势 · 英雄统计 · 段位分布
+├── 📊 数据大屏        ECharts 可视化 · 英雄统计 · 段位分布 · 物化视图
 ├── 🔄 赛季系统        赛季重置（存储过程 + CTE） · 段位衰减 · 历史归档
 └── 🏗️ 系统功能        限流 · 结构化日志 · 审计日志 · 健康检查
 ```
@@ -83,12 +82,12 @@ Arena Clash 竞技场对决
 
 ## 🖥️ 前端可视化
 
-5 个页面，**8 张 ECharts 动态图表**：
+6 个页面，**6 张 ECharts 动态图表**：
 
 | 页面 | 图表 | 数据来源 |
 |------|------|---------|
-| 📊 **数据大屏** | 段位分布饼图 · 英雄出场率饼图 · 英雄胜率柱状图 · 对战趋势折线图 | API + NTILE + 物化视图 |
-| 🏆 **排行榜** | ELO 排行榜柱状图 · 段位分布饼图 | Redis Sorted Set |
+| 📊 **数据大屏** | 段位分布饼图 · 英雄出场率饼图 · 英雄胜率柱状图 | API + NTILE + 物化视图 |
+| 🏆 **排行榜** | ELO 排行榜柱状图 | Redis Sorted Set |
 | 👤 **玩家查询** | KDA 走势折线图（含5场滑动窗口） · 累计ELO面积图 | 窗口函数 ROWS BETWEEN |
 
 ---
@@ -107,7 +106,7 @@ Arena Clash 竞技场对决
 | 🏗️ **物化视图** | ✅ | `mv_season_statistics` 赛季英雄统计预计算 |
 | 🔢 **生成列** | ✅ | kda (STORED) · win_rate (STORED) |
 | ✅ **CHECK 约束** | 12 个 | 状态枚举 · 值范围 · 时间合法性 · 库存校验 |
-| 📎 **索引** | 16 个 | 普通索引 · 复合索引 · 条件索引 · GIN 索引 |
+| 📎 **索引** | 26 个 | 普通索引 · 复合索引 · 条件索引 · GIN 索引 · 性能优化索引 |
 
 ---
 
@@ -124,8 +123,9 @@ Arena Clash 竞技场对决
 | POST | /api/matches/{id}/settle | 10/分 | 结算（存储过程 + 行级锁） |
 | GET | /api/leaderboard/global | 30/分 | 全服排行（Redis < 5ms） |
 | GET | /api/leaderboard/season/{id} | 30/分 | 赛季排行（RANK + LAG + LEAD） |
-| POST | /api/leaderboard/sync | 1/分 | PG → Redis 全量同步 |
+| POST | /api/leaderboard/sync | 1/分 | PG → Redis 全量同步（管理员） |
 | POST | /api/shop/purchase | 10/分 | 购买（行级锁 + 限流） |
+| GET | /api/stats/overview | 30/分 | 全局概览统计 |
 | GET | /api/stats/tier-distribution | 30/分 | 段位分布（NTILE 分桶） |
 | GET | /api/stats/hero-stats | 30/分 | 英雄出场率/胜率统计 |
 | GET | /api/stats/mv-season | 30/分 | 物化视图查询 |
@@ -135,15 +135,23 @@ Arena Clash 竞技场对决
 
 ## 🚀 快速启动
 
-### 方式一：本地开发（推荐）
+### 前置条件
+
+- **Python 3.11+**
+- **Node.js 18+**
+- **PostgreSQL 12+**（运行中）
+- **Redis 7+**（运行中）
+
+### 启动步骤
 
 ```bash
 # 1. 克隆项目
 git clone https://github.com/zgy0715/arena-clash.git
 cd arena-clash
 
-# 2. 配置数据库连接
-# 编辑 backend/.env，修改为你本地的 PostgreSQL 和 Redis 连接信息
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env，修改数据库连接信息（DATABASE_URL、REDIS_URL 等）
 
 # 3. 导入数据库
 psql -U postgres -d postgres -c "CREATE DATABASE arena_clash;"
@@ -152,23 +160,32 @@ psql -U postgres -d arena_clash < sql/procedures.sql
 psql -U postgres -d arena_clash < sql/triggers.sql
 psql -U postgres -d arena_clash < sql/sample_data.sql
 
-# 4. 启动后端
+# 4. 扩展玩家数据（可选，默认25玩家 → 101玩家）
+psql -U postgres -d arena_clash < sql/expand_players.sql
+
+# 5. 添加性能索引（可选）
+psql -U postgres -d arena_clash < sql/optimize_indexes.sql
+
+# 6. 启动后端
 cd backend
 pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-# 5. 启动前端（新终端）
+# 7. 启动前端（新终端）
 cd frontend
 npm install
 npm run dev
 ```
 
-### 方式二：Docker 一键部署
+### Windows 一键启动
 
-```bash
-cp .env.example .env    # 修改密码
-docker-compose up -d     # 一键启动所有服务
-```
+双击 `start.bat` 即可自动安装依赖并启动前后端服务。
+
+### 测试账号
+
+| 账号 | 密码 | 说明 |
+|------|------|------|
+| player1 ~ player100 | test1234 | player1 为管理员 |
 
 ---
 
@@ -176,58 +193,60 @@ docker-compose up -d     # 一键启动所有服务
 
 ```
 arena-clash/
-├── docker-compose.yml           # 容器编排
-├── .env.example                 # 环境变量模板
+├── start.bat                     # Windows 一键启动脚本
+├── .env.example                  # 环境变量模板
 ├── .gitignore
 ├── README.md
 ├── 实验报告.md                    # 完整实验报告（实验四）
-├── backend/                     # Python FastAPI 后端
-│   ├── main.py                  # 入口 + 限流 + 结构化日志
-│   ├── config.py                # pydantic-settings 配置
-│   ├── database.py              # SQLAlchemy 异步连接池
-│   ├── redis_client.py          # Redis 连接
-│   ├── dependencies.py          # JWT 认证
-│   ├── routers/                 # 8 个路由模块
-│   │   ├── auth.py              # 注册/登录
-│   │   ├── players.py           # 玩家信息/战绩
-│   │   ├── matchmaking.py       # 匹配队列
-│   │   ├── matches.py           # 对战管理系统
-│   │   ├── leaderboard.py       # 排行榜
-│   │   ├── shop.py              # 商城（限流）
-│   │   ├── stats.py             # 数据统计
-│   │   └── websocket.py         # 实时通信
-│   ├── services/                # 业务服务
+├── backend/                      # Python FastAPI 后端
+│   ├── main.py                   # 入口 + 限流 + 结构化日志
+│   ├── config.py                 # pydantic-settings 配置
+│   ├── database.py               # SQLAlchemy 异步连接池
+│   ├── redis_client.py           # Redis 连接（全局复用）
+│   ├── dependencies.py           # JWT 认证 + 管理员校验
+│   ├── limiter.py                # SlowAPI 限流器
+│   ├── routers/                  # 8 个路由模块
+│   │   ├── auth.py               # 注册/登录
+│   │   ├── players.py            # 玩家信息/战绩
+│   │   ├── matchmaking.py        # 匹配队列
+│   │   ├── matches.py            # 对战管理系统
+│   │   ├── leaderboard.py        # 排行榜
+│   │   ├── shop.py               # 商城（限流）
+│   │   ├── stats.py              # 数据统计
+│   │   └── websocket.py          # 实时通信
+│   ├── services/                 # 业务服务
 │   │   └── leaderboard_service.py
-│   ├── requirements.txt
-│   └── Dockerfile
-├── frontend/                    # Vue 3 + Vite 前端
+│   └── requirements.txt
+├── frontend/                     # Vue 3 + Vite 前端
 │   ├── index.html
 │   ├── vite.config.js
 │   ├── package.json
 │   ├── src/
-│   │   ├── main.js              # 入口
-│   │   ├── App.vue              # 布局 + 导航
-│   │   ├── api/index.js         # Axios API 封装
-│   │   ├── router/index.js      # 路由
-│   │   ├── styles/main.css      # 暗黑主题样式
+│   │   ├── main.js               # 入口
+│   │   ├── App.vue               # 布局 + 导航 + 登录/注册
+│   │   ├── api/index.js          # Axios API 封装
+│   │   ├── router/index.js       # 路由 + 404
+│   │   ├── styles/main.css       # 暗黑主题样式
 │   │   └── views/
-│   │       ├── Dashboard.vue    # 数据大屏（4张图）
-│   │       ├── Leaderboard.vue  # 排行榜（2张图）
-│   │       ├── Players.vue      # 玩家查询（2张图）
-│   │       ├── Matches.vue      # 对战列表
-│   │       └── Shop.vue         # 虚拟商城
-│   ├── nginx.conf
-│   └── Dockerfile
-├── sql/                         # 数据库脚本
-│   ├── init.sql                 # DDL + 索引 + 物化视图
-│   ├── procedures.sql           # 4 个存储过程
-│   ├── triggers.sql             # 触发器
-│   └── sample_data.sql          # 测试数据（25玩家 + 100对战）
+│   │       ├── Dashboard.vue     # 数据大屏（3张图）
+│   │       ├── Leaderboard.vue   # 排行榜（1张图）
+│   │       ├── Players.vue       # 玩家查询（2张图）
+│   │       ├── Matches.vue       # 对战列表
+│   │       ├── Shop.vue          # 虚拟商城
+│   │       ├── SeasonCenter.vue  # 赛季中心
+│   │       └── NotFound.vue      # 404 页面
+│   └── nginx.conf
+├── sql/                          # 数据库脚本
+│   ├── init.sql                  # DDL + 索引 + 物化视图
+│   ├── procedures.sql            # 4 个存储过程
+│   ├── triggers.sql              # 触发器
+│   ├── sample_data.sql           # 初始测试数据（25玩家）
+│   ├── expand_players.sql        # 扩展玩家数据（→101玩家）
+│   └── optimize_indexes.sql      # 10 个性能优化索引
 ├── scripts/
-│   ├── generate_data.py         # 大规模数据生成器（可配500用户）
-│   └── demo_queries.sql         # 实验验收 SQL 演示脚本
-└── redis/
-    └── redis.conf               # AOF + RDB 持久化
+│   ├── generate_data.py          # 大规模数据生成器
+│   └── demo_queries.sql          # 实验验收 SQL 演示脚本
+└── 实验报告.md                    # 完整实验报告
 ```
 
 ---
@@ -262,15 +281,14 @@ psql -U postgres -d arena_clash < scripts/demo_queries.sql
 
 | 分类 | 技术 | 版本 |
 |------|------|------|
-| **关系数据库** | PostgreSQL | 16 |
+| **关系数据库** | PostgreSQL | 12 |
 | **内存数据库** | Redis | 7 |
 | **后端框架** | FastAPI + SQLAlchemy 2.0 | Python 3.13 |
-| **前端** | Vue 3 + Vite + Element Plus | Node 20 |
+| **前端** | Vue 3 + Vite + Element Plus | Node 18+ |
 | **可视化** | ECharts | 5 |
 | **安全认证** | JWT + bcrypt + SlowAPI | - |
 | **数据校验** | Pydantic v2 + CHECK 约束 | 双重校验 |
 | **日志** | structlog | 结构化 JSON |
-| **部署** | Docker Compose + Nginx | 容器化 |
 
 ---
 
