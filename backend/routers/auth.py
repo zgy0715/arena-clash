@@ -14,6 +14,7 @@ from passlib.hash import bcrypt
 from config import settings
 from database import get_db
 from limiter import limiter
+import redis_client as redis_module
 
 router = APIRouter()
 
@@ -51,6 +52,10 @@ async def register(request: Request, body: RegisterRequest, db: AsyncSession = D
     )
     player_id = result.fetchone()[0]
     await db.commit()
+
+    # 将新玩家加入 Redis 排行榜
+    if redis_module.redis_client:
+        await redis_module.redis_client.zadd("leaderboard:elo", {str(player_id): 1500})
 
     return {"id": player_id, "message": "注册成功"}
 

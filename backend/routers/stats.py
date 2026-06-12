@@ -113,8 +113,8 @@ async def hero_stats(db: AsyncSession = Depends(get_db)):
 @router.get("/match-trend", summary="对战趋势")
 async def match_trend(days: int = 30, db: AsyncSession = Depends(get_db)):
     """最近N天每日对战趋势"""
-    from datetime import datetime, timedelta
-    start = datetime.utcnow() - timedelta(days=days)
+    from datetime import datetime, timedelta, timezone
+    start = datetime.now(timezone.utc) - timedelta(days=days)
     result = await db.execute(
         text("""
             SELECT DATE(created_at) AS match_date,

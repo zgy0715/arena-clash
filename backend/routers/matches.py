@@ -3,7 +3,7 @@
 """
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -82,8 +82,8 @@ async def settle_match(
 @router.get("", summary="对战列表")
 async def list_matches(
     season_id: int | None = None,
-    status: str | None = None,
-    limit: int = 20,
+    status: str | None = Query(default=None, pattern="^(pending|in_progress|completed|cancelled)$"),
+    limit: int = Query(default=20, le=200),
     db: AsyncSession = Depends(get_db),
 ):
     """查询对战列表，支持按赛季和状态筛选"""

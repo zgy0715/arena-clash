@@ -11,6 +11,7 @@ const routes = [
   { path: '/seasons', name: 'SeasonCenter', component: () => import('../views/SeasonCenter.vue') },
   { path: '/admin', name: 'AdminConsole', component: () => import('../views/AdminConsole.vue'), meta: { requiresAdmin: true } },
   { path: '/audit', name: 'AuditLog', component: () => import('../views/AuditLog.vue'), meta: { requiresAdmin: true } },
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFound.vue') },
 ]
 
 const router = createRouter({
@@ -18,10 +19,12 @@ const router = createRouter({
   routes,
 })
 
-// 路由守卫：管理后台/审计日志仅管理员可进入
+// 路由守卫：管理后台/审计日志需登录且为管理员
 router.beforeEach((to) => {
-  if (to.meta.requiresAdmin && localStorage.getItem('arena_is_admin') !== '1') {
-    return { path: '/' }
+  if (to.meta.requiresAdmin) {
+    const token = localStorage.getItem('arena_token')
+    const isAdmin = localStorage.getItem('arena_is_admin') === '1'
+    if (!token || !isAdmin) return { path: '/' }
   }
 })
 

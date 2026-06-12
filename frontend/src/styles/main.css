@@ -390,6 +390,39 @@ body {
 .mb-16 { margin-bottom: 16px; }
 .mr-8 { margin-right: 8px; }
 
+/* ===== 响应式导航 ===== */
+@media (max-width: 1100px) {
+  .app-header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px 16px;
+    gap: 8px;
+  }
+  .app-header .nav-links {
+    order: 3;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+  .app-header .nav-links a {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .chart-half, .chart-2-1 {
+    grid-template-columns: 1fr;
+  }
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header .logo { font-size: 16px; }
+  .app-header .nav-links a { padding: 5px 8px; font-size: 11px; }
+  .main-content { padding: 12px; }
+  .stat-grid { grid-template-columns: 1fr; }
+}
+
 /* ===== 滚动条 ===== */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -9,7 +9,7 @@
           <el-option label="进行中" value="in_progress" />
           <el-option label="待开始" value="pending" />
         </el-select>
-        <el-button type="primary" @click="loadMatches">刷新</el-button>
+
       </div>
 
       <el-table :data="matches" stripe size="small">

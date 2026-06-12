@@ -18,6 +18,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res.data,
   (err) => {
+    if (err.response?.status === 401) {
+      const hadToken = !!localStorage.getItem('arena_token')
+      // 仅当已登录用户的 Token 过期/无效时才清除登录状态
+      // 登录接口本身返回 401（密码错误）不应触发清除
+      if (hadToken) {
+        ;['arena_token','arena_nickname','arena_elo','arena_player_id','arena_is_admin']
+          .forEach(k => localStorage.removeItem(k))
+        if (window.location.pathname !== '/') {
+          window.location.href = '/'
+        }
+      }
+    }
     const msg = err.response?.data?.detail || err.message || '请求失败'
     return Promise.reject(new Error(msg))
   }
@@ -76,9 +88,7 @@ export const adminDeletePlayer = (id) => api.delete(`/admin/players/${id}`)
 export const adminRefreshStats = () => api.post('/admin/refresh-stats')
 
 // ===== 对战中心（模块2）=====
-export const createMatch = (data) => api.post('/matches/create', data)
 export const createFullMatch = (data) => api.post('/matches/create-full', data)
-export const addMatchPlayer = (matchId, data) => api.post(`/matches/${matchId}/players`, data)
 export const startMatch = (matchId) => api.post(`/matches/${matchId}/start`)
 export const settleMatch = (matchId, winnerSide) =>
   api.post(`/matches/${matchId}/settle`, { winner_side: winnerSide })

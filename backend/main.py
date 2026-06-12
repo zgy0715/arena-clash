@@ -38,9 +38,10 @@ logger = structlog.get_logger()
 # ============================================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import redis_client as redis_module
     # 启动：初始化 Redis
-    global redis_client
-    redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+    r = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+    redis_module.redis_client = r
 
     # 安全地显示 Redis 地址（隐藏密码）
     safe_redis = settings.REDIS_URL
@@ -55,7 +56,8 @@ async def lifespan(app: FastAPI):
     )
     yield
     # 关闭：清理资源
-    await redis_client.close()
+    redis_module.redis_client = None
+    await r.close()
     await engine.dispose()
     logger.info("Arena Clash 服务关闭")
 

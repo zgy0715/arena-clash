@@ -32,8 +32,25 @@
     <el-dialog v-model="showLogin" title="用户登录" width="380px" :close-on-click-modal="false">
       <el-input v-model="loginForm.username" placeholder="用户名" style="margin-bottom:12px" />
       <el-input v-model="loginForm.password" placeholder="密码" type="password" show-password @keyup.enter="doLogin" />
+      <div style="margin-top:8px;font-size:12px;color:#64748b;line-height:1.6">
+        测试账号：player1 ~ player100<br>密码：test1234<br>player1 为管理员
+      </div>
       <template #footer>
-        <el-button type="primary" @click="doLogin" :loading="logging">登录</el-button>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <el-button size="small" link type="primary" @click="showLogin=false;showRegister=true">没有账号？去注册</el-button>
+          <el-button type="primary" @click="doLogin" :loading="logging">登录</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 注册弹窗 -->
+    <el-dialog v-model="showRegister" title="用户注册" width="380px" :close-on-click-modal="false">
+      <el-input v-model="registerForm.username" placeholder="用户名（3-50字符）" style="margin-bottom:12px" />
+      <el-input v-model="registerForm.nickname" placeholder="昵称" style="margin-bottom:12px" />
+      <el-input v-model="registerForm.password" placeholder="密码（6-100字符）" type="password" show-password @keyup.enter="doRegister" />
+      <template #footer>
+        <el-button @click="showRegister = false">取消</el-button>
+        <el-button type="primary" @click="doRegister" :loading="registering">注册</el-button>
       </template>
     </el-dialog>
 
@@ -46,7 +63,8 @@
 
 <script setup>
 import { ref, onMounted, provide } from 'vue'
-import { login, getPlayer } from './api'
+import { ElMessage } from 'element-plus'
+import { login, register, getPlayer } from './api'
 
 const token = ref('')
 const nickname = ref('')
@@ -56,12 +74,15 @@ const isAdmin = ref(false)
 const playerId = ref(null)
 const showLogin = ref(false)
 const logging = ref(false)
-const loginForm = ref({ username: 'player1', password: 'test1234' })
+const loginForm = ref({ username: '', password: '' })
+const showRegister = ref(false)
+const registering = ref(false)
+const registerForm = ref({ username: '', password: '', nickname: '' })
 
 provide('token', token)
 provide('isAdmin', isAdmin)
 provide('playerId', playerId)
-provide('updateGold', (v) => { gold.value = v })
+provide('updateGold', (v) => { gold.value = typeof v === 'function' ? v(gold.value) : v })
 
 const doLogin = async () => {
   logging.value = true
@@ -95,13 +116,33 @@ const doLogout = () => {
     .forEach(k => localStorage.removeItem(k))
 }
 
-import { ElMessage } from 'element-plus'
+const doRegister = async () => {
+  registering.value = true
+  try {
+    await register(registerForm.value.username, registerForm.value.password, registerForm.value.nickname)
+    ElMessage.success('注册成功，请登录')
+    showRegister.value = false
+    loginForm.value.username = registerForm.value.username
+    loginForm.value.password = ''
+    showLogin.value = true
+  } catch (e) {
+    ElMessage.error(e.message || '注册失败')
+  }
+  registering.value = false
+}
 
-onMounted(() => {
+onMounted(async () => {
   token.value = localStorage.getItem('arena_token') || ''
   nickname.value = localStorage.getItem('arena_nickname') || ''
   elo.value = parseInt(localStorage.getItem('arena_elo') || '0')
   isAdmin.value = localStorage.getItem('arena_is_admin') === '1'
   playerId.value = parseInt(localStorage.getItem('arena_player_id') || '0') || null
+  // 恢复登录后重新获取金币
+  if (token.value && playerId.value) {
+    try {
+      const p = await getPlayer(playerId.value)
+      gold.value = p.gold
+    } catch {}
+  }
 })
 </script>

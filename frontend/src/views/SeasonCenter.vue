@@ -21,9 +21,7 @@
         <el-table-column prop="players" label="参与人数" width="110" />
         <el-table-column prop="start_date" label="开始时间" />
         <el-table-column prop="end_date" label="结束时间" />
-        <el-table-column label="操作" width="120">
-          <template #default="{ row }"><el-button size="small" @click.stop="selectSeason(row)">查看排名</el-button></template>
-        </el-table-column>
+
       </el-table>
     </div>
 

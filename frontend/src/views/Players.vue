@@ -152,6 +152,9 @@ const drawCharts = () => {
 }
 
 // 默认查询 player1
-import { onMounted } from 'vue'
-onMounted(() => searchPlayer())
+import { onMounted, onUnmounted } from 'vue'
+
+const handleResize = () => { Object.values(charts).forEach(c => c?.resize()) }
+onMounted(() => { searchPlayer(); window.addEventListener('resize', handleResize) })
+onUnmounted(() => { window.removeEventListener('resize', handleResize); Object.values(charts).forEach(c => c?.dispose()) })
 </script>

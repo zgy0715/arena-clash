@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as aioredis
 
 from database import get_db
+from dependencies import require_admin
 from redis_client import get_redis
 
 router = APIRouter()
@@ -78,6 +79,7 @@ async def season_leaderboard(
 
 @router.post("/sync", summary="PG → Redis 同步排行榜")
 async def sync_leaderboard(
+    admin_id: int = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),
 ):

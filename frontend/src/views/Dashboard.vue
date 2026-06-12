@@ -20,16 +20,10 @@
       </div>
     </div>
 
-    <!-- 英雄胜率 + 对战趋势 -->
-    <div class="chart-half mt-16">
-      <div class="card">
-        <div class="card-title">📈 英雄胜率排行 (柱状图)</div>
-        <div id="heroBarChart" class="chart-container"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">📅 近30天对战趋势 (折线图)</div>
-        <div id="trendChart" class="chart-container"></div>
-      </div>
+    <!-- 英雄胜率 -->
+    <div class="card mt-16">
+      <div class="card-title">📈 英雄胜率排行 (柱状图)</div>
+      <div id="heroBarChart" class="chart-container"></div>
     </div>
 
     <!-- 物化视图：赛季统计 -->
@@ -51,19 +45,17 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import { getOverview, getTierDistribution, getHeroStats, getMatchTrend, getMvSeasonStats } from '../api'
+import { getOverview, getTierDistribution, getHeroStats, getMvSeasonStats } from '../api'
 import { ElTable, ElTableColumn } from 'element-plus'
 
 const overview = ref({})
 const mvStats = ref([])
 
-// 存储所有 chart 实例，用于销毁和 resize
 const charts = {}
 
 const initChart = (id) => {
   const dom = document.getElementById(id)
   if (!dom) return null
-  // 如果已有实例，先销毁
   if (charts[id]) charts[id].dispose()
   const instance = echarts.init(dom)
   charts[id] = instance
@@ -71,13 +63,11 @@ const initChart = (id) => {
 }
 
 const buildCharts = async () => {
-  // 每个 API 独立调用，一个失败不影响其他
   const safeApi = (fn) => fn().catch(() => null)
 
-  const [tierRes, heroRes, trendRes, mvRes] = await Promise.all([
+  const [tierRes, heroRes, mvRes] = await Promise.all([
     safeApi(getTierDistribution),
     safeApi(getHeroStats),
-    safeApi(() => getMatchTrend(30)),
     safeApi(getMvSeasonStats),
   ])
 
@@ -85,7 +75,7 @@ const buildCharts = async () => {
 
   await nextTick()
 
-  // ----- 段位分布 饼图 -----
+  // 段位分布 饼图
   const tier = initChart('tierChart')
   if (tier) {
     const data = tierRes?.distribution || []
@@ -93,10 +83,12 @@ const buildCharts = async () => {
     tier.setOption({
       tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
       series: [{
-        type: 'pie', radius: ['45%', '72%'],
+        type: 'pie',
+        radius: ['45%', '72%'],
         itemStyle: { borderRadius: 4, borderColor: '#0b0f1a', borderWidth: 4 },
         data: data.map((d, i) => ({
-          name: d.tier, value: d.player_count,
+          name: d.tier,
+          value: d.player_count,
           itemStyle: { color: colors[i % 4] }
         })),
         label: { color: '#8899b4', fontSize: 12, fontWeight: 500 }
@@ -104,67 +96,66 @@ const buildCharts = async () => {
     })
   }
 
-  // ----- 英雄出场率 饼图 -----
+  // 英雄出场率 饼图
   const hDom = initChart('heroPieChart')
   if (hDom) {
     const heroes = (heroRes?.heroes || []).slice(0, 10)
-    const hColors = ['#06b6d4','#8b5cf6','#ec4899','#f59e0b','#10b981','#6366f1','#14b8a6','#d946ef','#f97316','#3b82f6']
+    const hColors = [
+      '#06b6d4', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981',
+      '#6366f1', '#14b8a6', '#d946ef', '#f97316', '#3b82f6'
+    ]
     hDom.setOption({
       tooltip: { trigger: 'item' },
       series: [{
-        type: 'pie', radius: '68%',
+        type: 'pie',
+        radius: '68%',
         itemStyle: { borderRadius: 3, borderColor: '#0b0f1a', borderWidth: 3 },
-        data: heroes.map((h,i) => ({ name: h.name, value: h.total_picks, itemStyle: { color: hColors[i] } })),
+        data: heroes.map((h, i) => ({
+          name: h.name,
+          value: h.total_picks,
+          itemStyle: { color: hColors[i] }
+        })),
         label: { color: '#8899b4', fontSize: 11, formatter: '{b}\n{d}%' }
       }]
     })
   }
 
-  // ----- 英雄胜率 柱状图 -----
+  // 英雄胜率 柱状图
   const bar = initChart('heroBarChart')
   if (bar) {
     const heroes = (heroRes?.heroes || []).slice(0, 10).sort((a, b) => b.win_rate - a.win_rate)
     bar.setOption({
       tooltip: { trigger: 'axis' },
       grid: { left: 55, right: 25, top: 30, bottom: 60 },
-      xAxis: { type: 'category', data: heroes.map(h => h.name), axisLabel: { color: '#8899b4', rotate: 35, fontSize: 10 } },
-      yAxis: { type: 'value', name: '胜率%', max: 100, axisLabel: { color: '#8899b4' },
-               splitLine: { lineStyle: { color: '#1e3050', type: 'dashed' } } },
+      xAxis: {
+        type: 'category',
+        data: heroes.map(h => h.name),
+        axisLabel: { color: '#8899b4', rotate: 35, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        name: '胜率%',
+        max: 100,
+        axisLabel: { color: '#8899b4' },
+        splitLine: { lineStyle: { color: '#1e3050', type: 'dashed' } }
+      },
       series: [{
-        type: 'bar', data: heroes.map(h => h.win_rate), barWidth: '55%',
-        itemStyle: { borderRadius: [6, 6, 0, 0],
+        type: 'bar',
+        data: heroes.map(h => h.win_rate),
+        barWidth: '55%',
+        itemStyle: {
+          borderRadius: [6, 6, 0, 0],
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#06b6d4' }, { offset: 1, color: '#6366f1' }
+            { offset: 0, color: '#06b6d4' },
+            { offset: 1, color: '#6366f1' }
           ])
         },
         label: { show: true, position: 'top', color: '#8899b4', fontSize: 10, fontWeight: 500 }
       }]
     })
   }
-
-  // ----- 对战趋势 折线图 -----
-  const trend = initChart('trendChart')
-  if (trend) {
-    const data = trendRes?.trend || []
-    trend.setOption({
-      tooltip: { trigger: 'axis' },
-      grid: { left: 55, right: 25, top: 20, bottom: 40 },
-      xAxis: { type: 'category', data: data.map(t => t.date), axisLabel: { color: '#8899b4', rotate: 30, fontSize: 10 } },
-      yAxis: { type: 'value', name: '场次', axisLabel: { color: '#8899b4' },
-               splitLine: { lineStyle: { color: '#1e3050', type: 'dashed' } } },
-      series: [{
-        type: 'line', data: data.map(t => t.match_count),
-        smooth: true, symbol: 'circle', symbolSize: 7,
-        itemStyle: { color: '#8b5cf6' }, lineStyle: { width: 3, shadowBlur: 10, shadowColor: 'rgba(139,92,246,0.4)' },
-        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(139,92,246,0.35)' }, { offset: 1, color: 'rgba(139,92,246,0.02)' }
-        ]) }
-      }]
-    })
-  }
 }
 
-// 窗口自适应
 const onResize = () => Object.values(charts).forEach(c => c?.resize?.())
 window.addEventListener('resize', onResize)
 
@@ -174,7 +165,7 @@ onBeforeUnmount(() => {
 })
 
 onMounted(async () => {
-  try { overview.value = await getOverview() } catch {}
+  try { overview.value = await getOverview() } catch (e) { console.error(e) }
   await buildCharts()
 })
 </script>

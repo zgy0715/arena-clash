@@ -23,33 +23,27 @@
       </div>
     </div>
 
-    <!-- 段位分布饼图 + PG同步 -->
-    <div class="chart-half mt-16">
-      <div class="card">
-        <div class="card-title">📊 赛季段位分布 (NTILE 4档)</div>
-        <div id="tierPieChart" class="chart-container"></div>
-      </div>
-      <div class="card">
-        <div class="card-title">🔄 数据同步</div>
-        <div style="text-align:center;padding:40px">
-          <p style="color:#8ab4d6;margin-bottom:24px;font-size:14px;line-height:1.8">
-            将 PostgreSQL 玩家 ELO 数据<br/>全量同步到 Redis 排行榜<br/>
-            <span style="color:#f0c040">使用 Pipeline 批量写入</span>
-          </p>
-          <el-button type="primary" size="large" @click="doSync" :loading="syncing">
-            🔄 PG → Redis 全量同步
-          </el-button>
-          <p v-if="syncMsg" style="margin-top:16px;color:#52c41a">{{ syncMsg }}</p>
-        </div>
+    <!-- PG同步 -->
+    <div class="card mt-16">
+      <div class="card-title">🔄 数据同步</div>
+      <div style="text-align:center;padding:40px">
+        <p style="color:#8ab4d6;margin-bottom:24px;font-size:14px;line-height:1.8">
+          将 PostgreSQL 玩家 ELO 数据<br/>全量同步到 Redis 排行榜<br/>
+          <span style="color:#f0c040">使用 Pipeline 批量写入</span>
+        </p>
+        <el-button type="primary" size="large" @click="doSync" :loading="syncing">
+          🔄 PG → Redis 全量同步
+        </el-button>
+        <p v-if="syncMsg" style="margin-top:16px;color:#52c41a">{{ syncMsg }}</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import { getLeaderboard, syncLeaderboard, getTierDistribution } from '../api'
+import { getLeaderboard, syncLeaderboard } from '../api'
 import { ElTable, ElTableColumn, ElButton, ElMessage } from 'element-plus'
 
 const lbData = ref([])
@@ -90,27 +84,6 @@ const drawEloBar = () => {
   })
 }
 
-const drawTierPie = async () => {
-  try {
-    const res = await getTierDistribution()
-    const tierPieChart = initChart('tierPieChart')
-    if (!tierPieChart) return
-    const colors = ['#06b6d4','#8b5cf6','#ec4899','#f59e0b']
-    tierPieChart.setOption({
-      tooltip: { trigger: 'item' },
-      series: [{
-        type: 'pie', radius: ['40%','68%'],
-        itemStyle: { borderRadius: 4, borderColor: '#0b0f1a', borderWidth: 4 },
-        data: (res.distribution || []).map((d,i) => ({
-          name: d.tier, value: d.player_count,
-          itemStyle: { color: colors[i%4] }
-        })),
-        label: { color: '#8899b4', fontSize: 12 }
-      }]
-    })
-  } catch {}
-}
-
 const doSync = async () => {
   syncing.value = true
   syncMsg.value = ''
@@ -125,8 +98,15 @@ const doSync = async () => {
   syncing.value = false
 }
 
+const handleResize = () => { Object.values(charts).forEach(c => c?.resize()) }
+
 onMounted(() => {
   loadLB()
-  drawTierPie()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  Object.values(charts).forEach(c => c?.dispose())
 })
 </script>
